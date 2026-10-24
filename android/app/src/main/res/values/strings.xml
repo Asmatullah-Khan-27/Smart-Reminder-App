@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Smart Reminder &amp; Voice Alarm</string>
+    <string name="widget_description">Displays upcoming SQLite reminders, next scheduled alarm, and a Quick-Add shortcut.</string>
+</resources>

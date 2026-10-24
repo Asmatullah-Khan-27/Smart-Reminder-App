@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:gravity="center"
+    android:padding="28dp"
+    android:background="#080D1A">
+
+    <TextView
+        android:id="@+id/alarm_ringing_mode_badge"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="VOICE ALARM (TTS)"
+        android:textColor="#38BDF8"
+        android:textSize="13sp"
+        android:textStyle="bold"
+        android:paddingLeft="14dp"
+        android:paddingRight="14dp"
+        android:paddingTop="6dp"
+        android:paddingBottom="6dp" />
+
+    <TextView
+        android:id="@+id/alarm_ringing_title"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="20dp"
+        android:gravity="center"
+        android:text="Scheduled Alarm"
+        android:textColor="#FFFFFF"
+        android:textSize="28sp"
+        android:textStyle="bold" />
+
+    <TextView
+        android:id="@+id/alarm_ringing_subtitle"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="14dp"
+        android:gravity="center"
+        android:text="Sir, time ho gaya hai. Uth jaiye aur apna kaam shuru karein."
+        android:textColor="#CBD5E1"
+        android:textSize="17sp" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="44dp"
+        android:orientation="horizontal"
+        android:gravity="center">
+
+        <Button
+            android:id="@+id/btn_alarm_snooze"
+            android:layout_width="0dp"
+            android:layout_height="56dp"
+            android:layout_weight="1"
+            android:layout_marginEnd="10dp"
+            android:backgroundTint="#1E293B"
+            android:textColor="#FFFFFF"
+            android:text="Snooze (+10m)" />
+
+        <Button
+            android:id="@+id/btn_alarm_dismiss"
+            android:layout_width="0dp"
+            android:layout_height="56dp"
+            android:layout_weight="1"
+            android:layout_marginStart="10dp"
+            android:backgroundTint="#6366F1"
+            android:textColor="#FFFFFF"
+            android:text="Dismiss Alarm" />
+    </LinearLayout>
+
+</LinearLayout>
