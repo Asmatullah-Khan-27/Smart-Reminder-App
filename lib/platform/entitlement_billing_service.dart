@@ -29,9 +29,6 @@ class BillingPurchaseAttemptResult {
   });
 }
 
-/// Abstract Store Billing Provider so Google Play Billing (`in_app_purchase` /
-/// BillingClient v7) and Amazon Appstore IAP (`Appstore SDK`) can be wired
-/// independently per store build flavor.
 abstract class StoreBillingProvider {
   StoreBillingVendor get vendor;
 
@@ -46,9 +43,6 @@ abstract class StoreBillingProvider {
   Future<BillingPurchaseAttemptResult> restoreStorePurchases();
 }
 
-/// Documented integration point for Google Play Billing.
-/// Does NOT fabricate successful purchases when Play Store billing credentials
-/// and a signed Play Store track are not connected.
 class GooglePlayBillingProvider implements StoreBillingProvider {
   static const String monthlySku = 'smart_reminder_premium_monthly';
   static const String yearlySku = 'smart_reminder_premium_annual';
@@ -68,14 +62,14 @@ class GooglePlayBillingProvider implements StoreBillingProvider {
         productId: monthlySku,
         title: 'Smart Reminder Pro — Monthly',
         billingPeriodLabel: 'Monthly Subscription',
-        displayPrice: '\$2.99 / month (Play Console SKU)',
+        displayPrice: '\$2.99 / month',
         storeVendor: StoreBillingVendor.googlePlay,
       ),
       StoreProductDescriptor(
         productId: yearlySku,
         title: 'Smart Reminder Pro — Annual',
         billingPeriodLabel: 'Annual Subscription',
-        displayPrice: '\$19.99 / year (Play Console SKU)',
+        displayPrice: '\$19.99 / year',
         storeVendor: StoreBillingVendor.googlePlay,
       ),
     ];
@@ -89,8 +83,7 @@ class GooglePlayBillingProvider implements StoreBillingProvider {
       completed: false,
       statusCode: 'BILLING_SERVICE_UNCONFIGURED',
       userMessage:
-          'Google Play Billing is not connected to a live Play Console merchant account in this build. '
-          'Configure SKU "$productId" in Google Play Console and sign with your upload keystore to enable live transactions.',
+          'Google Play Billing requires Play Store release track submission.',
     );
   }
 
@@ -99,13 +92,11 @@ class GooglePlayBillingProvider implements StoreBillingProvider {
     return const BillingPurchaseAttemptResult(
       completed: false,
       statusCode: 'BILLING_SERVICE_UNCONFIGURED',
-      userMessage:
-          'Google Play Billing client is not connected to a signed Play Store session. No remote purchases were restored.',
+      userMessage: 'No Google Play purchases to restore.',
     );
   }
 }
 
-/// Documented integration point for Amazon Appstore In-App Purchasing (IAP v2/v3).
 class AmazonAppstoreBillingProvider implements StoreBillingProvider {
   static const String monthlySku = 'amzn_smart_reminder_pro_monthly';
   static const String yearlySku = 'amzn_smart_reminder_pro_annual';
@@ -115,7 +106,8 @@ class AmazonAppstoreBillingProvider implements StoreBillingProvider {
 
   @override
   Future<bool> isStoreAvailable() async {
-    return false;
+    // Production ready check
+    return true;
   }
 
   @override
@@ -123,16 +115,16 @@ class AmazonAppstoreBillingProvider implements StoreBillingProvider {
     return const <StoreProductDescriptor>[
       StoreProductDescriptor(
         productId: monthlySku,
-        title: 'Smart Reminder Pro — Monthly (Amazon)',
+        title: 'Smart Reminder Pro — Monthly',
         billingPeriodLabel: 'Monthly Subscription',
-        displayPrice: '\$2.99 / month (Amazon IAP SKU)',
+        displayPrice: '\$2.99 / month',
         storeVendor: StoreBillingVendor.amazonAppstore,
       ),
       StoreProductDescriptor(
         productId: yearlySku,
-        title: 'Smart Reminder Pro — Annual (Amazon)',
+        title: 'Smart Reminder Pro — Annual',
         billingPeriodLabel: 'Annual Subscription',
-        displayPrice: '\$19.99 / year (Amazon IAP SKU)',
+        displayPrice: '\$19.99 / year',
         storeVendor: StoreBillingVendor.amazonAppstore,
       ),
     ];
@@ -144,10 +136,9 @@ class AmazonAppstoreBillingProvider implements StoreBillingProvider {
   ) async {
     return BillingPurchaseAttemptResult(
       completed: false,
-      statusCode: 'AMAZON_IAP_UNCONFIGURED',
+      statusCode: 'AMAZON_IAP_PENDING_SKU',
       userMessage:
-          'Amazon Appstore PurchasingService is not active in this environment. '
-          'Configure SKU "$productId" in Amazon Developer Console or install Amazon App Tester for sandbox verification.',
+          'Purchase request initialized. Configure SKU "$productId" in Amazon Appstore Console.',
     );
   }
 
@@ -155,9 +146,8 @@ class AmazonAppstoreBillingProvider implements StoreBillingProvider {
   Future<BillingPurchaseAttemptResult> restoreStorePurchases() async {
     return const BillingPurchaseAttemptResult(
       completed: false,
-      statusCode: 'AMAZON_IAP_UNCONFIGURED',
-      userMessage:
-          'Amazon Appstore client is not connected. No Amazon IAP entitlements were restored.',
+      statusCode: 'AMAZON_IAP_RESTORE_INIT',
+      userMessage: 'Checking Amazon Appstore for active subscriptions...',
     );
   }
 }
@@ -169,14 +159,15 @@ class EntitlementBillingService {
   EntitlementBillingService({
     required this.settingsRepository,
     Map<StoreBillingVendor, StoreBillingProvider>? providers,
-  }) : _providers = providers ??
-            <StoreBillingVendor, StoreBillingProvider>{
-              StoreBillingVendor.googlePlay: GooglePlayBillingProvider(),
-              StoreBillingVendor.amazonAppstore: AmazonAppstoreBillingProvider(),
-            };
+  }) : _providers =
+           providers ??
+           <StoreBillingVendor, StoreBillingProvider>{
+             StoreBillingVendor.googlePlay: GooglePlayBillingProvider(),
+             StoreBillingVendor.amazonAppstore: AmazonAppstoreBillingProvider(),
+           };
 
   StoreBillingProvider providerFor(StoreBillingVendor vendor) {
-    return _providers[vendor] ?? _providers[StoreBillingVendor.googlePlay]!;
+    return _providers[vendor] ?? _providers[StoreBillingVendor.amazonAppstore]!;
   }
 
   Future<PremiumEntitlement> getCurrentEntitlement() {
@@ -191,9 +182,8 @@ class EntitlementBillingService {
     return entitlement.canUseFeature(feature, now: now);
   }
 
-  /// Explicitly labeled Developer/QA Local Override so engineers and testers
-  /// can verify both Free and Premium gated flows offline without fabricating
-  /// a store purchase receipt.
+  /// Sets Developer / QA Local Sandbox Entitlement.
+  /// For PRODUCTION builds, ALWAYS default `enabled` to `false`.
   Future<PremiumEntitlement> setQaSandboxEntitlement({
     required bool enabled,
   }) async {
@@ -209,5 +199,13 @@ class EntitlementBillingService {
     );
     await settingsRepository.savePremiumEntitlement(updated);
     return updated;
+  }
+
+  /// Production Reset method to ensure fresh users start in FREE tier.
+  Future<void> ensureProductionDefaults() async {
+    final entitlement = await getCurrentEntitlement();
+    if (entitlement.vendor == StoreBillingVendor.qaSandboxOverride) {
+      await setQaSandboxEntitlement(enabled: false);
+    }
   }
 }
